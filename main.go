@@ -1,52 +1,61 @@
 package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/mitchellh/mapstructure"
+)
 
 type MainStruct struct {
-	x string `mapstructure:"field_x"`
-	y int `mapstructure:"field_y"`
+	X string `mapstructure:"field_x"`
+	Y int    `mapstructure:"field_y"`
 }
 
-type Model struct{
-	payload map[string]interface{}
+type Model struct {
+	Payload map[string]interface{}
 }
 
-func New() *Model{
-	return &Model
+func New() *Model {
+	return &Model{
+		Payload: make(map[string]interface{}),
+	}
 }
 
 func (m *Model) Add(key string, value interface{}) {
-	m.payload[key] = value
+	m.Payload[key] = value
 }
 
 func (m *Model) Remove(key string) {
-	delete(m.payload, key)
+	delete(m.Payload, key)
 }
 
 func (m *Model) AddByGroup(p map[string]interface{}) {
 	for k, v := range p {
-		m.Add(k,v)
+		m.Add(k, v)
 	}
 }
 
 func (m *Model) AddByStruct(input interface{}) {
 	var p map[string]interface{}
-	json.Marshal(&input, &p)
+	v, _ := json.Marshal(input)
+	_ = json.Unmarshal(v, &p)
 	m.AddByGroup(p)
 }
 
-func (m *Model) Decode() interface{}{
-	map
+func (m *Model) Decode() interface{} {
+	var s MainStruct
+	_ = mapstructure.Decode(m.Payload, &s)
+	fmt.Printf("payloadd = %#v, s result = %#v\n", m.Payload, s)
+	return s
 }
 
-func main()  {
-	a1 := struct {
-		x string
-		y int
-	}{
-			x :"xxx",
-			y: 0,
-	}
+func main() {
+	a1 := MainStruct{X: "xxx", Y: 15}
 
-	test := 
+	test := New()
+	test.AddByStruct(&a1)
+
+	result := test.Decode()
+	fmt.Printf("result = %#v", result)
 }
