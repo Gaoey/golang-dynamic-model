@@ -3,13 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/mitchellh/mapstructure"
 )
 
 type MainStruct struct {
-	X string `mapstructure:"field_x"`
-	Y int    `mapstructure:"field_y"`
+	X string `mapstructure:"field_x" json:"field_x"`
+	Y int    `mapstructure:"field_y" json:"field_y"`
+	Z string `mapstructure:"field_z" json:"field_z"`
 }
 
 type Model struct {
@@ -37,16 +39,17 @@ func (m *Model) AddByGroup(p map[string]interface{}) {
 }
 
 func (m *Model) AddByStruct(input interface{}) {
-	var p map[string]interface{}
-	v, _ := json.Marshal(input)
-	_ = json.Unmarshal(v, &p)
-	m.AddByGroup(p)
+	v := reflect.ValueOf(input)
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Type().Field(i)
+		tag := string(field.Tag.Get("mapstructure"))
+		m.Add(tag, v.Field(i).Interface())
+	}
 }
 
-func (m *Model) Decode() interface{} {
-	var s MainStruct
+// Decode to main struct
+func (m *Model) DecodeAs(s interface{}) interface{} {
 	_ = mapstructure.Decode(m.Payload, &s)
-	fmt.Printf("payloadd = %#v, s result = %#v\n", m.Payload, s)
 	return s
 }
 
@@ -54,8 +57,13 @@ func main() {
 	a1 := MainStruct{X: "xxx", Y: 15}
 
 	test := New()
-	test.AddByStruct(&a1)
+	test.AddByStruct(a1)
+	test.Add("field_z", "zzz")
 
-	result := test.Decode()
-	fmt.Printf("result = %#v", result)
+	fmt.Printf("%v\n", test.Payload)
+
+	result := test.DecodeAs(MainStruct{})
+
+	b, _ := json.Marshal(result)
+	fmt.Printf("%s", string(b))
 }
